@@ -95,3 +95,4 @@ C:\Users\162D6LA\OneDrive\Documentos\IPC2\Vacaciones Junio 2026\C#\Proyecto Orbi
 C:\Users\162D6LA\OneDrive\Documentos\IPC2\Vacaciones Junio 2026\C#\Proyecto OrbiNet\OrbiNet\obj\Debug\net10.0\OrbiNet.pdb
 C:\Users\162D6LA\OneDrive\Documentos\IPC2\Vacaciones Junio 2026\C#\Proyecto OrbiNet\OrbiNet\obj\Debug\net10.0\OrbiNet.genruntimeconfig.cache
 C:\Users\162D6LA\OneDrive\Documentos\IPC2\Vacaciones Junio 2026\C#\Proyecto OrbiNet\OrbiNet\obj\Debug\net10.0\ref\OrbiNet.dll
+C:\Users\162D6LA\OneDrive\Documentos\IPC2\Vacaciones Junio 2026\C#\Proyecto OrbiNet\OrbiNet\obj\Debug\net10.0\OrbiNet.sourcelink.json
