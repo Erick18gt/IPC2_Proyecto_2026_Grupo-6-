@@ -1,12 +1,12 @@
 using System;
 
-namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
+namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria
 {
     public class LogAuditoria
     {
-        public DateTime Timestamp { get; set; }
-        public string Severity { get; set; }
-        public string Message { get; set; }
+        private DateTime Timestamp { get; set; }
+        private string severity;
+        private string message;
 
         public LogAuditoria(string severity, string message)
         {
@@ -17,6 +17,7 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
 
         public string Severity
         {
+            get { return severity; }
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -29,6 +30,7 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
 
         public string Message
         {
+            get { return message; }
             set
             {
                 if (string.IsNullOrEmpty(value))

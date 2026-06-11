@@ -1,4 +1,4 @@
-namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
+namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria
 {
     public class ListaLogAuditoria : IAbstractCollection
     {
@@ -38,6 +38,25 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
                 cola = nuevoNodo;
             }
             tamano++;
+        }
+
+        public LogAuditoria[] Recorrer(){
+            LogAuditoria[] registros = new LogAuditoria[tamano];
+            NodoLogAuditoria? actual = cabeza;
+            int posicion = 0;
+            while (actual != null) {
+                registros[posicion] = actual.Valor;
+                actual = actual.Siguiente;
+                posicion++;
+            }
+            return registros;
+        }
+
+        public void mostrarLog(){
+            LogAuditoria[] registros = Recorrer();
+            for (int i = 0; i < registros.Length; i++) {
+                Console.WriteLine(registros[i].ObtenerDescripcion());
+            }
         }
     }
 }
