@@ -1,28 +1,22 @@
 using System;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria_ListaEnlazadaSimple
+
+namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria
 {
     public class LogAuditoria
     {
-        private DateTime timestamp;
-        private string severity;
-        private string message;
+        public DateTime Timestamp { get; set; }
+        public string Severity { get; set; }
+        public string Message { get; set; }
 
-        public LogAuditoria(DateTime timestamp, string severity, string message)
+        public LogAuditoria(string severity, string message)
         {
-            this.timestamp = DateTime.Now;
+            Timestamp = DateTime.Now;
             Severity = severity;
             Message = message;
         }
 
-        public DateTime Timestamp
-        {
-            get { return timestamp; }
-        }
-
         public string Severity
         {
-            get { return severity; }
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -35,7 +29,6 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.LogAuditoria_ListaEnlazadaS
 
         public string Message
         {
-            get { return message; }
             set
             {
                 if (string.IsNullOrEmpty(value))
