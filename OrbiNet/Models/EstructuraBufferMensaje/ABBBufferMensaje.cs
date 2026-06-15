@@ -1,12 +1,12 @@
 namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraBufferMensaje
 {
-    public class ABBBufferMensaje
+    public class ABBBufferMensaje : IAbstractCollection
     {
         private NodoBufferMensaje raiz;
         private int tamano;
 
         public int Count => tamano;
-        public bool isEmpty => raiz == null;
+        public bool IsEmpty => raiz == null;
 
         public void Clear() 
         { 

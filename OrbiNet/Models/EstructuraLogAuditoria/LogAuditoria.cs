@@ -30,7 +30,7 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria
 
         public string Message
         {
-            get { return message; }
+            get { return message; } 
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -43,7 +43,7 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria
 
         public string ObtenerDescripcion()
         {
-            return $"[{timestamp}] - [{severity}] - {message}";
+            return $"[{Timestamp}] - [{severity}] - {message}";
         }
     }
 }
