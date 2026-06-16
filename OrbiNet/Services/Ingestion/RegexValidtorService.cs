@@ -2,7 +2,9 @@
 using System.Text.RegularExpressions;
 
 public class RegexValidtorService
-{   public bool ValidarSateliteId(string id)
+{
+    // validaciones de datos individuales
+    public bool ValidarSateliteId(string id)
     {   if(string.IsNullOrWhiteSpace(id))
         {
             return false;
