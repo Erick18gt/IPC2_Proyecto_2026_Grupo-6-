@@ -3,86 +3,189 @@
 using System.Xml;
 
 public class XmlIngestionService
-{ public void CargarXml(string XmlContent)
-    { XmlDocument doc = new XmlDocument();
-        // Evitar la resolución de entidades externas para prevenir ataques XXE
+{
+    private readonly RegexValidtorService validator = new RegexValidtorService();
 
+    public IngestionResult CargarXml(string xmlContent)
+    {
+        if (string.IsNullOrWhiteSpace(xmlContent))
+        {
+            return CrearError("El contenido XML está vacío.", 0);
+        }
+
+        XmlDocument doc = new XmlDocument();
         doc.XmlResolver = null;
 
-        //Cargamos el contenido del XML en el XmlDocument
-        doc.LoadXml(XmlContent);
-        //Llamamos a los metodos para leer cada nodo del XML
-        LeerSatelitesEcuatoriales(doc);
-        LeerSatelitesPolares(doc);
-        LeerAntenasTerrestres(doc);
+        try
+        {
+            doc.LoadXml(xmlContent);
+        }
+        catch
+        {
+            return CrearError("El XML no tiene una estructura válida.", 0);
+        }
+
+        if (doc.DocumentElement == null || doc.DocumentElement.Name != "orbitnet")
+        {
+            return CrearError("El nodo raíz debe ser <orbitnet>.", 0);
+        }
+
+        int procesados = 0;
+
+        IngestionResult resultadoEcuatoriales = ValidarSatelitesEcuatoriales(doc, ref procesados);
+        if (!resultadoEcuatoriales.Success)
+        {
+            return resultadoEcuatoriales;
+        }
+
+        IngestionResult resultadoPolares = ValidarSatelitesPolares(doc, ref procesados);
+        if (!resultadoPolares.Success)
+        {
+            return resultadoPolares;
+        }
+
+        IngestionResult resultadoAntenas = ValidarAntenasTerrestres(doc, ref procesados);
+        if (!resultadoAntenas.Success)
+        {
+            return resultadoAntenas;
+        }
+
+        return new IngestionResult
+        {
+            Success = true,
+            Message = "XML validado correctamente. La carga puede continuar.",
+            ProcessedNodes = procesados
+        };
     }
 
-    private void LeerSatelitesEcuatoriales(XmlDocument doc)
-    {   
+    private IngestionResult ValidarSatelitesEcuatoriales(XmlDocument doc, ref int procesados)
+    {
         XmlNodeList? satelites = doc.SelectNodes("//constelaciones_ecuatoriales/satelite");
 
-        if (satelites == null) {
-            return;
-        }
-        foreach(XmlNode satelite in satelites)
-        {
-           string id = satelite.Attributes?["id"]?.Value ?? "";
-           string nombre = satelite.SelectSingleNode("nombre")?.InnerText ?? "";
-           string ip = satelite.SelectSingleNode("enlace_ip")?.InnerText ?? "";
-
-            Console.WriteLine("SATÉLITE ECUATORIAL");
-            Console.WriteLine($"ID: {id}");
-            Console.WriteLine($"Nombre: {nombre}");
-            Console.WriteLine($"IP: {ip}");
-            Console.WriteLine();
-        }
-        
-    } 
-    private void LeerSatelitesPolares(XmlDocument doc)
-    {   XmlNodeList? satelites = doc.SelectNodes("//orbitas_polares/polar/satelite");
         if (satelites == null)
         {
-            return;
+            return CrearError("No se pudo leer la sección de satélites ecuatoriales.", procesados);
         }
+
         foreach (XmlNode satelite in satelites)
         {
             string id = satelite.Attributes?["id"]?.Value ?? "";
             string nombre = satelite.SelectSingleNode("nombre")?.InnerText ?? "";
-            string frecuencia = satelite.SelectSingleNode("frecuencia")?.InnerText ?? "";
-            Console.WriteLine("SATÉLITE POLAR");
-            Console.WriteLine($"ID: {id}");
-            Console.WriteLine($"Nombre: {nombre}");
-            Console.WriteLine($"Frecuencia: {frecuencia}");
-            Console.WriteLine();
+            string ip = satelite.SelectSingleNode("enlace_ip")?.InnerText ?? "";
+
+            if (!validator.ValidarSateliteEcuatorial(id, nombre, ip))
+            {
+                return CrearError(
+                    $"Satélite ecuatorial inválido. ID='{id}', Nombre='{nombre}', IP='{ip}'.",
+                    procesados
+                );
+            }
+
+            procesados++;
         }
 
+        return CrearExitoTemporal(procesados);
     }
-    private void LeerAntenasTerrestres(XmlDocument doc)
+
+    private IngestionResult ValidarSatelitesPolares(XmlDocument doc, ref int procesados)
+    {
+        XmlNodeList? polares = doc.SelectNodes("//orbitas_polares/polar");
+
+        if (polares == null)
+        {
+            return CrearError("No se pudo leer la sección de órbitas polares.", procesados);
+        }
+
+        foreach (XmlNode polar in polares)
+        {
+            string polarId = polar.Attributes?["id"]?.Value ?? "";
+
+            if (!validator.ValidarPolarId(polarId))
+            {
+                return CrearError(
+                    $"Órbita polar inválida. ID='{polarId}'.",
+                    procesados
+                );
+            }
+
+            XmlNodeList? satelites = polar.SelectNodes("satelite");
+
+            if (satelites == null)
+            {
+                return CrearError(
+                    $"No se pudieron leer satélites dentro de la órbita polar '{polarId}'.",
+                    procesados
+                );
+            }
+
+            foreach (XmlNode satelite in satelites)
+            {
+                string id = satelite.Attributes?["id"]?.Value ?? "";
+                string nombre = satelite.SelectSingleNode("nombre")?.InnerText ?? "";
+                string frecuencia = satelite.SelectSingleNode("frecuencia")?.InnerText ?? "";
+
+                if (!validator.ValidarSatelitePolar(id, nombre, frecuencia))
+                {
+                    return CrearError(
+                        $"Satélite polar inválido. ID='{id}', Nombre='{nombre}', Frecuencia='{frecuencia}'.",
+                        procesados
+                    );
+                }
+
+                procesados++;
+            }
+        }
+
+        return CrearExitoTemporal(procesados);
+    }
+
+    private IngestionResult ValidarAntenasTerrestres(XmlDocument doc, ref int procesados)
     {
         XmlNodeList? antenas = doc.SelectNodes("//antenas_terrestres/antena");
-        if (antenas == null) {
-            return;
+
+        if (antenas == null)
+        {
+            return CrearError("No se pudo leer la sección de antenas terrestres.", procesados);
         }
-        foreach(XmlNode antena in antenas)
+
+        foreach (XmlNode antena in antenas)
         {
             string id = antena.Attributes?["id"]?.Value ?? "";
             string nombre = antena.SelectSingleNode("nombre")?.InnerText ?? "";
             string coordenadas = antena.SelectSingleNode("coordenadas")?.InnerText ?? "";
             string ipNodo = antena.SelectSingleNode("ip_nodo")?.InnerText ?? "";
-            Console.WriteLine("ANTENA TERRESTRE");
-            Console.WriteLine($"ID: {id}");
-            Console.WriteLine($"Nombre: {nombre}");
-            Console.WriteLine($"Coordenadas: {coordenadas}");
-            Console.WriteLine($"IP Nodo: {ipNodo}");
-            Console.WriteLine();
-        
+
+            if (!validator.ValidarAntenaTerrestre(id, nombre, coordenadas, ipNodo))
+            {
+                return CrearError(
+                    $"Antena terrestre inválida. ID='{id}', Nombre='{nombre}', Coordenadas='{coordenadas}', IP='{ipNodo}'.",
+                    procesados
+                );
+            }
+
+            procesados++;
         }
 
+        return CrearExitoTemporal(procesados);
+    }
 
+    private IngestionResult CrearError(string mensaje, int procesados)
+    {
+        return new IngestionResult
+        {
+            Success = false,
+            Message = mensaje,
+            ProcessedNodes = procesados
+        };
+    }
+
+    private IngestionResult CrearExitoTemporal(int procesados)
+    {
+        return new IngestionResult
+        {
+            Success = true,
+            Message = "Validación parcial correcta.",
+            ProcessedNodes = procesados
+        };
     }
 }
-
-
-
-
-
