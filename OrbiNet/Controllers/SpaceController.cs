@@ -8,10 +8,14 @@ namespace OrbiNet.Controllers
     public class SpaceController : ControllerBase
     {
         private readonly SimulationService simulationService;
+        private readonly DistributedRoutingService routingService;
 
-        public SpaceController(SimulationService simulationService)
+        public SpaceController(
+            SimulationService simulationService,
+            DistributedRoutingService routingService)
         {
             this.simulationService = simulationService;
+            this.routingService = routingService;
         }
 
         [HttpPost("config")]
@@ -56,6 +60,38 @@ namespace OrbiNet.Controllers
                 Estado = "Exitoso",
                 Mensaje = "Simulación reiniciada",
                 TickActual = simulationService.ObtenerTickActual()
+            });
+        }
+
+        [HttpPost("node/register/{idNodo}")]
+        public IActionResult RegisterNode(string idNodo)
+        {
+            bool registrado = routingService.RegistrarNodo(idNodo);
+
+            return Ok(new
+            {
+                Estado = registrado ? "Exitoso" : "Error",
+                Nodo = idNodo,
+                Registrado = registrado
+            });
+        }
+
+        [HttpGet("node/count")]
+        public IActionResult GetNodeCount()
+        {
+            return Ok(new
+            {
+                CantidadNodos = routingService.ObtenerCantidadNodos()
+            });
+        }
+
+        [HttpGet("node/exists/{idNodo}")]
+        public IActionResult NodeExists(string idNodo)
+        {
+            return Ok(new
+            {
+                Nodo = idNodo,
+                Existe = routingService.BuscarNodo(idNodo)
             });
         }
     }
