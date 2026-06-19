@@ -1,13 +1,22 @@
 ﻿namespace OrbiNet.Services.Ingestion;
 
 using System.Xml;
+using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraRegistroSatelite;
+using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria;
 
 public class XmlIngestionService
 {
     private readonly RegexValidtorService validator = new RegexValidtorService();
+    private readonly AVLRegistroSatelite catalogoSatelites = new AVLRegistroSatelite();
+    private readonly ListaLogAuditoria logs = new ListaLogAuditoria();
+
+    private RegistroSatelite[] satelitesTemporales = new RegistroSatelite[100];
+    private int totalSatelitesTemporales = 0;
 
     public IngestionResult CargarXml(string xmlContent)
     {
+        totalSatelitesTemporales = 0;
+
         if (string.IsNullOrWhiteSpace(xmlContent))
         {
             return CrearError("El contenido XML está vacío.", 0);
@@ -41,19 +50,25 @@ public class XmlIngestionService
         IngestionResult resultadoPolares = ValidarSatelitesPolares(doc, ref procesados);
         if (!resultadoPolares.Success)
         {
+            totalSatelitesTemporales = 0;
             return resultadoPolares;
         }
 
         IngestionResult resultadoAntenas = ValidarAntenasTerrestres(doc, ref procesados);
         if (!resultadoAntenas.Success)
         {
+            totalSatelitesTemporales = 0;
             return resultadoAntenas;
         }
+
+        ConfirmarCarga();
+
+        RegistrarInfo("XML validado correctamente. Carga confirmada.");
 
         return new IngestionResult
         {
             Success = true,
-            Message = "XML validado correctamente. La carga puede continuar.",
+            Message = "XML validado correctamente. Satélites polares insertados en AVL.",
             ProcessedNodes = procesados
         };
     }
@@ -62,9 +77,9 @@ public class XmlIngestionService
     {
         XmlNodeList? satelites = doc.SelectNodes("//constelaciones_ecuatoriales/satelite");
 
-        if (satelites == null)
+        if (satelites == null || satelites.Count == 0)
         {
-            return CrearError("No se pudo leer la sección de satélites ecuatoriales.", procesados);
+            return CrearError("Debe existir al menos un satélite ecuatorial.", procesados);
         }
 
         foreach (XmlNode satelite in satelites)
@@ -81,6 +96,7 @@ public class XmlIngestionService
                 );
             }
 
+            RegistrarInfo($"Satélite ecuatorial validado: {id}");
             procesados++;
         }
 
@@ -91,9 +107,9 @@ public class XmlIngestionService
     {
         XmlNodeList? polares = doc.SelectNodes("//orbitas_polares/polar");
 
-        if (polares == null)
+        if (polares == null || polares.Count == 0)
         {
-            return CrearError("No se pudo leer la sección de órbitas polares.", procesados);
+            return CrearError("Debe existir al menos una órbita polar.", procesados);
         }
 
         foreach (XmlNode polar in polares)
@@ -102,18 +118,15 @@ public class XmlIngestionService
 
             if (!validator.ValidarPolarId(polarId))
             {
-                return CrearError(
-                    $"Órbita polar inválida. ID='{polarId}'.",
-                    procesados
-                );
+                return CrearError($"Órbita polar inválida. ID='{polarId}'.", procesados);
             }
 
             XmlNodeList? satelites = polar.SelectNodes("satelite");
 
-            if (satelites == null)
+            if (satelites == null || satelites.Count == 0)
             {
                 return CrearError(
-                    $"No se pudieron leer satélites dentro de la órbita polar '{polarId}'.",
+                    $"Debe existir al menos un satélite dentro de la órbita polar '{polarId}'.",
                     procesados
                 );
             }
@@ -122,16 +135,28 @@ public class XmlIngestionService
             {
                 string id = satelite.Attributes?["id"]?.Value ?? "";
                 string nombre = satelite.SelectSingleNode("nombre")?.InnerText ?? "";
-                string frecuencia = satelite.SelectSingleNode("frecuencia")?.InnerText ?? "";
+                string frecuenciaTexto = satelite.SelectSingleNode("frecuencia")?.InnerText ?? "";
 
-                if (!validator.ValidarSatelitePolar(id, nombre, frecuencia))
+                if (!validator.ValidarSatelitePolar(id, nombre, frecuenciaTexto))
                 {
                     return CrearError(
-                        $"Satélite polar inválido. ID='{id}', Nombre='{nombre}', Frecuencia='{frecuencia}'.",
+                        $"Satélite polar inválido. ID='{id}', Nombre='{nombre}', Frecuencia='{frecuenciaTexto}'.",
                         procesados
                     );
                 }
 
+                if (totalSatelitesTemporales >= satelitesTemporales.Length)
+                {
+                    return CrearError("Se superó el límite temporal de satélites polares permitidos.", procesados);
+                }
+
+                double frecuencia = double.Parse(frecuenciaTexto);
+                RegistroSatelite registro = new RegistroSatelite(id, nombre, frecuencia);
+
+                satelitesTemporales[totalSatelitesTemporales] = registro;
+                totalSatelitesTemporales++;
+
+                RegistrarInfo($"Satélite polar validado temporalmente: {id}");
                 procesados++;
             }
         }
@@ -143,9 +168,9 @@ public class XmlIngestionService
     {
         XmlNodeList? antenas = doc.SelectNodes("//antenas_terrestres/antena");
 
-        if (antenas == null)
+        if (antenas == null || antenas.Count == 0)
         {
-            return CrearError("No se pudo leer la sección de antenas terrestres.", procesados);
+            return CrearError("Debe existir al menos una antena terrestre.", procesados);
         }
 
         foreach (XmlNode antena in antenas)
@@ -163,14 +188,34 @@ public class XmlIngestionService
                 );
             }
 
+            RegistrarInfo($"Antena terrestre validada: {id}");
             procesados++;
         }
 
         return CrearExitoTemporal(procesados);
     }
 
+    private void ConfirmarCarga()
+    {
+        for (int i = 0; i < totalSatelitesTemporales; i++)
+        {
+            catalogoSatelites.Insertar(satelitesTemporales[i]);
+            RegistrarInfo($"Satélite polar insertado en AVL: {satelitesTemporales[i].SatelliteId}");
+            satelitesTemporales[i] = null;
+        }
+
+        totalSatelitesTemporales = 0;
+    }
+
+    private void RegistrarInfo(string mensaje)
+    {
+        logs.InsertarLog(new LogAuditoria("INFO", mensaje));
+    }
+
     private IngestionResult CrearError(string mensaje, int procesados)
     {
+        logs.InsertarLog(new LogAuditoria("ERROR", mensaje));
+
         return new IngestionResult
         {
             Success = false,
