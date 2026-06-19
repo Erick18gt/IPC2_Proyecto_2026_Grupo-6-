@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<SimulationService>();
+builder.Services.AddSingleton<DistributedRoutingService>();
 
 var app = builder.Build();
 
