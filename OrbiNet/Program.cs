@@ -1,3 +1,4 @@
+using OrbiNet.Middleware;
 using OrbiNet.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseMiddleware<BasicAuthMiddleware>();
 
 app.UseAuthorization();
 
