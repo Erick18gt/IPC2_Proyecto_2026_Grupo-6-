@@ -6,6 +6,8 @@ using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria;
 
 public class XmlIngestionService
 {
+    private readonly TransactionScope transaction = new TransactionScope();
+    private readonly GraphvizRenderService graphviz = new GraphvizRenderService();
     private readonly RegexValidtorService validator = new RegexValidtorService();
     private readonly AVLRegistroSatelite catalogoSatelites = new AVLRegistroSatelite();
     private readonly ListaLogAuditoria logs = new ListaLogAuditoria();
@@ -15,6 +17,7 @@ public class XmlIngestionService
 
     public IngestionResult CargarXml(string xmlContent)
     {
+        transaction.Begin();
         totalSatelitesTemporales = 0;
 
         if (string.IsNullOrWhiteSpace(xmlContent))
@@ -64,7 +67,7 @@ public class XmlIngestionService
         ConfirmarCarga();
 
         RegistrarInfo("XML validado correctamente. Carga confirmada.");
-
+        transaction.Commit();
         return new IngestionResult
         {
             Success = true,
@@ -214,6 +217,7 @@ public class XmlIngestionService
 
     private IngestionResult CrearError(string mensaje, int procesados)
     {
+        transaction.Rollback(mensaje);
         logs.InsertarLog(new LogAuditoria("ERROR", mensaje));
 
         return new IngestionResult
@@ -232,5 +236,24 @@ public class XmlIngestionService
             Message = "Validación parcial correcta.",
             ProcessedNodes = procesados
         };
+    }
+    public LogAuditoria[] ObtenerLogs()
+    {
+        return logs.Recorrer();
+    }
+
+    public string GenerarDotLogs()
+    {
+        return graphviz.GenerarDotLogs(logs.Recorrer());
+    }
+
+    public string GenerarDotResultado(IngestionResult resultado)
+    {
+        return graphviz.GenerarDotResultado(resultado);
+    }
+
+    public string ObtenerEstadoTransaccion()
+    {
+        return transaction.ObtenerEstado();
     }
 }
