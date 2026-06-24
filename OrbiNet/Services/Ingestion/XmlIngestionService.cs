@@ -3,22 +3,29 @@
 using System.Xml;
 using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraRegistroSatelite;
 using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraLogAuditoria;
+using IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraRedSatelitalPlano;
 
 public class XmlIngestionService
 {
     private readonly TransactionScope transaction = new TransactionScope();
     private readonly GraphvizRenderService graphviz = new GraphvizRenderService();
     private readonly RegexValidtorService validator = new RegexValidtorService();
+
     private readonly AVLRegistroSatelite catalogoSatelites = new AVLRegistroSatelite();
     private readonly ListaLogAuditoria logs = new ListaLogAuditoria();
+    private readonly RedSatelitalPlano redPlano = new RedSatelitalPlano();
 
     private RegistroSatelite[] satelitesTemporales = new RegistroSatelite[100];
     private int totalSatelitesTemporales = 0;
+
+    private SatelitePlano[] redTemporal = new SatelitePlano[100];
+    private int totalRedTemporal = 0;
 
     public IngestionResult CargarXml(string xmlContent)
     {
         transaction.Begin();
         totalSatelitesTemporales = 0;
+        totalRedTemporal = 0;
 
         if (string.IsNullOrWhiteSpace(xmlContent))
         {
@@ -53,14 +60,14 @@ public class XmlIngestionService
         IngestionResult resultadoPolares = ValidarSatelitesPolares(doc, ref procesados);
         if (!resultadoPolares.Success)
         {
-            totalSatelitesTemporales = 0;
+            LimpiarTemporales();
             return resultadoPolares;
         }
 
         IngestionResult resultadoAntenas = ValidarAntenasTerrestres(doc, ref procesados);
         if (!resultadoAntenas.Success)
         {
-            totalSatelitesTemporales = 0;
+            LimpiarTemporales();
             return resultadoAntenas;
         }
 
@@ -68,10 +75,11 @@ public class XmlIngestionService
 
         RegistrarInfo("XML validado correctamente. Carga confirmada.");
         transaction.Commit();
+
         return new IngestionResult
         {
             Success = true,
-            Message = "XML validado correctamente. Satélites polares insertados en AVL.",
+            Message = "XML validado correctamente. Satélites polares insertados en AVL y red satelital insertada en matriz ortogonal.",
             ProcessedNodes = procesados
         };
     }
@@ -99,7 +107,18 @@ public class XmlIngestionService
                 );
             }
 
-            RegistrarInfo($"Satélite ecuatorial validado: {id}");
+            if (totalRedTemporal >= redTemporal.Length)
+            {
+                return CrearError("Se superó el límite temporal de nodos de red permitidos.", procesados);
+            }
+
+            int columna = ExtraerNumeroFinal(id);
+            SatelitePlano nodoPlano = new SatelitePlano(1, columna, id, ip);
+
+            redTemporal[totalRedTemporal] = nodoPlano;
+            totalRedTemporal++;
+
+            RegistrarInfo($"Satélite ecuatorial validado temporalmente para matriz: {id}");
             procesados++;
         }
 
@@ -159,7 +178,7 @@ public class XmlIngestionService
                 satelitesTemporales[totalSatelitesTemporales] = registro;
                 totalSatelitesTemporales++;
 
-                RegistrarInfo($"Satélite polar validado temporalmente: {id}");
+                RegistrarInfo($"Satélite polar validado temporalmente para AVL: {id}");
                 procesados++;
             }
         }
@@ -191,7 +210,18 @@ public class XmlIngestionService
                 );
             }
 
-            RegistrarInfo($"Antena terrestre validada: {id}");
+            if (totalRedTemporal >= redTemporal.Length)
+            {
+                return CrearError("Se superó el límite temporal de nodos de red permitidos.", procesados);
+            }
+
+            int columna = ExtraerNumeroFinal(id);
+            SatelitePlano nodoPlano = new SatelitePlano(2, columna, id, ipNodo);
+
+            redTemporal[totalRedTemporal] = nodoPlano;
+            totalRedTemporal++;
+
+            RegistrarInfo($"Antena terrestre validada temporalmente para matriz: {id}");
             procesados++;
         }
 
@@ -207,7 +237,55 @@ public class XmlIngestionService
             satelitesTemporales[i] = null;
         }
 
+        for (int i = 0; i < totalRedTemporal; i++)
+        {
+            redPlano.Insertar(redTemporal[i]);
+            RegistrarInfo($"Nodo insertado en matriz ortogonal: {redTemporal[i].Id}");
+            redTemporal[i] = null;
+        }
+
         totalSatelitesTemporales = 0;
+        totalRedTemporal = 0;
+    }
+
+    private void LimpiarTemporales()
+    {
+        for (int i = 0; i < totalSatelitesTemporales; i++)
+        {
+            satelitesTemporales[i] = null;
+        }
+
+        for (int i = 0; i < totalRedTemporal; i++)
+        {
+            redTemporal[i] = null;
+        }
+
+        totalSatelitesTemporales = 0;
+        totalRedTemporal = 0;
+    }
+
+    private int ExtraerNumeroFinal(string id)
+    {
+        string numeros = "";
+
+        for (int i = id.Length - 1; i >= 0; i--)
+        {
+            if (char.IsDigit(id[i]))
+            {
+                numeros = id[i] + numeros;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (int.TryParse(numeros, out int resultado))
+        {
+            return resultado;
+        }
+
+        return 0;
     }
 
     private void RegistrarInfo(string mensaje)
@@ -237,6 +315,7 @@ public class XmlIngestionService
             ProcessedNodes = procesados
         };
     }
+
     public LogAuditoria[] ObtenerLogs()
     {
         return logs.Recorrer();
@@ -255,5 +334,10 @@ public class XmlIngestionService
     public string ObtenerEstadoTransaccion()
     {
         return transaction.ObtenerEstado();
+    }
+
+    public string GenerarTablaRedSatelital()
+    {
+        return redPlano.GenerarTablaDinamica();
     }
 }
