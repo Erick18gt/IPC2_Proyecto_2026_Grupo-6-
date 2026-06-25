@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OrbiNet.Services;
+using OrbiNet.Models;
+using OrbiNet.Services.Ingestion;
 
 namespace OrbiNet.Controllers
 {
@@ -9,24 +11,99 @@ namespace OrbiNet.Controllers
     {
         private readonly SimulationService simulationService;
         private readonly DistributedRoutingService routingService;
+        private readonly XmlIngestionService xmlIngestionService;
 
         public SpaceController(
             SimulationService simulationService,
-            DistributedRoutingService routingService)
+            DistributedRoutingService routingService,
+            XmlIngestionService xmlIngestionService)
         {
             this.simulationService = simulationService;
             this.routingService = routingService;
+            this.xmlIngestionService = xmlIngestionService;
         }
 
+        // ============================
+        // XML / REGEX / GRAPHVIZ
+        // ============================
+
         [HttpPost("config")]
-        public IActionResult LoadConfiguration()
+        public IActionResult LoadConfiguration(
+            [FromBody] XmlConfigurationRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.XmlContent))
+            {
+                return BadRequest(new
+                {
+                    Estado = "Error",
+                    Mensaje = "No se recibió contenido XML"
+                });
+            }
+
+            var resultado =
+                xmlIngestionService.CargarXml(request.XmlContent);
+
+            if (!resultado.Success)
+            {
+                return BadRequest(new
+                {
+                    Estado = "Error",
+                    resultado.Message,
+                    resultado.ProcessedNodes
+                });
+            }
+
             return Ok(new
             {
                 Estado = "Exitoso",
-                Mensaje = "Configuración recibida correctamente"
+                resultado.Message,
+                resultado.ProcessedNodes
             });
         }
+
+        [HttpGet("logs")]
+        public IActionResult ObtenerLogs()
+        {
+            return Ok(
+                xmlIngestionService.ObtenerLogs()
+            );
+        }
+
+        [HttpGet("graph/logs")]
+        public IActionResult ObtenerGraphvizLogs()
+        {
+            string dot =
+                xmlIngestionService.GenerarDotLogs();
+
+            return Ok(new
+            {
+                Dot = dot
+            });
+        }
+
+        [HttpGet("transaction/status")]
+        public IActionResult EstadoTransaccion()
+        {
+            return Ok(new
+            {
+                Estado =
+                    xmlIngestionService.ObtenerEstadoTransaccion()
+            });
+        }
+
+        [HttpGet("network/table")]
+        public IActionResult ObtenerTablaRed()
+        {
+            return Ok(new
+            {
+                Tabla =
+                    xmlIngestionService.GenerarTablaRedSatelital()
+            });
+        }
+
+        // ============================
+        // Simuluacion del servicio
+        // ============================
 
         [HttpGet("simulation/status")]
         public IActionResult GetSimulationStatus()
