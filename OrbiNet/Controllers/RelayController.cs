@@ -55,6 +55,12 @@ namespace OrbiNet.Controllers
                     Mensaje = "Nodo destino no encontrado"
                 });
             }
+            
+            routingService.RegistrarMensaje(
+                request.Origen,
+                request.Destino,
+                request.Mensaje
+            );
 
             return Ok(new
             {
@@ -62,6 +68,15 @@ namespace OrbiNet.Controllers
                 Mensaje = "Mensaje registrado para transmisión",
                 Origen = request.Origen,
                 Destino = request.Destino
+            });
+        }
+
+        [HttpGet("history")]
+        public IActionResult ObtenerHistorial()
+        {
+            return Ok(new
+            {
+                Historial = routingService.ObtenerHistorial()
             });
         }
     }

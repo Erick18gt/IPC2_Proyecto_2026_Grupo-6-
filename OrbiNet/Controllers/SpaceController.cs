@@ -23,10 +23,6 @@ namespace OrbiNet.Controllers
             this.xmlIngestionService = xmlIngestionService;
         }
 
-        // ============================
-        // XML / REGEX / GRAPHVIZ
-        // ============================
-
         [HttpPost("config")]
         public IActionResult LoadConfiguration(
             [FromBody] XmlConfigurationRequest request)
@@ -100,10 +96,27 @@ namespace OrbiNet.Controllers
                     xmlIngestionService.GenerarTablaRedSatelital()
             });
         }
+        
+        [HttpGet("state")]
+        public IActionResult GetState()
+        {
+            return Ok(new
+            {
+        TickActual = simulationService.ObtenerTickActual(),
+        EstadoTransaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+        CantidadNodos = routingService.ObtenerCantidadNodos()
+        });
+        }
 
-        // ============================
-        // Simuluacion del servicio
-        // ============================
+        [HttpGet("topology")]
+        public IActionResult ObtenerTopologia()
+        {
+        return Ok(new
+        {
+        Topologia =
+            xmlIngestionService.GenerarTablaRedSatelital()
+        });
+        }
 
         [HttpGet("simulation/status")]
         public IActionResult GetSimulationStatus()
