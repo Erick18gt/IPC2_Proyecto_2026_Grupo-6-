@@ -17,7 +17,7 @@ public class RegexValidtorService
         {
             return false;
         }
-        return Regex.IsMatch(id, @"^ANT-[A-Z]{3}-\d{3}$");
+        return Regex.IsMatch(id, @"^ANT-[A-Z]{3}-\d{4}$");
     }
     public bool ValidarPolarId(string id)
     {   if(string.IsNullOrWhiteSpace(id))
