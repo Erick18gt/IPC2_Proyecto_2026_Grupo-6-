@@ -12,7 +12,13 @@ namespace OrbiNet.Middleware
         }
 
         public async Task InvokeAsync(HttpContext context)
-        {
+        {   //permite el acceso libre a lo que no es Api
+            if (!context.Request.Path.StartsWithSegments("/api"))
+            {
+                await next(context);
+                return;
+            }
+
             string? authorizationHeader =
                 context.Request.Headers["Authorization"];
 

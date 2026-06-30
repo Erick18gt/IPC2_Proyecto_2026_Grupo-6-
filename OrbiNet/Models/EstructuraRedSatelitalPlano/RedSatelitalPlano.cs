@@ -264,30 +264,30 @@ namespace IPC2_Proyecto_2026_Grupo_6_.OrbiNet.Models.EstructuraRedSatelitalPlano
 
         public string GenerarTablaDinamica()
         {
-            if (IsEmpty) return "La red satelital está vacía. No hay nodos en órbita.";
-
-            int maxFilas = ObtenerMaxFila();
-            int maxColumnas = ObtenerMaxColumna();
-
-            string diagrama = $"Matriz Ortogonal (Red Satelital) - Dimensión descubierta: {maxFilas}x{maxColumnas}\n";
-            diagrama += new string('-', (maxColumnas * 16) + 1) + "\n";
-
-            for (int r = 1; r <= maxFilas; r++)
+            if (IsEmpty)
             {
-                for (int c = 1; c <= maxColumnas; c++)
+                return "La red satelital está vacía. No hay nodos en órbita.";
+            }
+
+            string diagrama = "Matriz Ortogonal Dispersa - Nodos existentes\n";
+            diagrama += "=============================================\n\n";
+
+            HeaderNode filaActual = rowHeaders;
+
+            while (filaActual != null)
+            {
+                diagrama += $"Fila {filaActual.Index}:\n";
+
+                MatrixNode nodoActual = filaActual.Access;
+
+                while (nodoActual != null)
                 {
-                    MatrixNode nodo = BuscarNodo(r, c);
-                    if (nodo != null)
-                    {
-                        diagrama += $"| {nodo.Valor.Id,-10} "; 
-                    }
-                    else
-                    {
-                        diagrama += "|    ----    ";
-                    }
+                    diagrama += $"  Col {nodoActual.Valor.Col} -> {nodoActual.Valor.Id} | IP: {nodoActual.Valor.IpAddress}\n";
+                    nodoActual = nodoActual.Right;
                 }
-                diagrama += "|\n";
-                diagrama += new string('-', (maxColumnas * 16) + 1) + "\n";
+
+                diagrama += "\n";
+                filaActual = filaActual.Next;
             }
 
             return diagrama;

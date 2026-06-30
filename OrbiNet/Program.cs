@@ -1,9 +1,11 @@
 using OrbiNet.Middleware;
+using OrbiNet.Services.Ingestion;
 using OrbiNet.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<XmlIngestionService>();
 builder.Services.AddSingleton<SimulationService>();
 
 builder.Services.AddSingleton<DistributedRoutingService>(

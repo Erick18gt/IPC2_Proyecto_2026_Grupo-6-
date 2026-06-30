@@ -215,8 +215,10 @@ public class XmlIngestionService
                 return CrearError("Se superó el límite temporal de nodos de red permitidos.", procesados);
             }
 
-            int columna = ExtraerNumeroFinal(id);
-            SatelitePlano nodoPlano = new SatelitePlano(2, columna, id, ipNodo);
+            int fila = ObtenerFilaDesdeCoordenadas(coordenadas);
+            int columna = ObtenerColumnaDesdeCoordenadas(coordenadas);
+
+            SatelitePlano nodoPlano = new SatelitePlano(fila, columna, id, ipNodo);
 
             redTemporal[totalRedTemporal] = nodoPlano;
             totalRedTemporal++;
@@ -262,6 +264,39 @@ public class XmlIngestionService
 
         totalSatelitesTemporales = 0;
         totalRedTemporal = 0;
+    }
+    private int ObtenerFilaDesdeCoordenadas(string coordenadas)
+    {
+        string[] partes = coordenadas.Split(',');
+
+        if (partes.Length != 2)
+        {
+            return 0;
+        }
+
+        if (double.TryParse(partes[0], out double fila))
+        {
+            return (int)fila;
+        }
+
+        return 0;
+    }
+
+    private int ObtenerColumnaDesdeCoordenadas(string coordenadas)
+    {
+        string[] partes = coordenadas.Split(',');
+
+        if (partes.Length != 2)
+        {
+            return 0;
+        }
+
+        if (double.TryParse(partes[1], out double columna))
+        {
+            return (int)columna;
+        }
+
+        return 0;
     }
 
     private int ExtraerNumeroFinal(string id)

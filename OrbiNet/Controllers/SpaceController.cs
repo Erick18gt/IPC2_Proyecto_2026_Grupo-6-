@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using OrbiNet.Models;
 using OrbiNet.Services;
+using OrbiNet.Services.Ingestion;
 
 namespace OrbiNet.Controllers
 {
@@ -9,22 +11,53 @@ namespace OrbiNet.Controllers
     {
         private readonly SimulationService simulationService;
         private readonly DistributedRoutingService routingService;
+        private readonly XmlIngestionService xmlIngestionService;
 
         public SpaceController(
             SimulationService simulationService,
-            DistributedRoutingService routingService)
+            DistributedRoutingService routingService,
+            XmlIngestionService xmlIngestionService)
         {
             this.simulationService = simulationService;
             this.routingService = routingService;
+            this.xmlIngestionService = xmlIngestionService;
         }
 
         [HttpPost("config")]
-        public IActionResult LoadConfiguration()
+        public IActionResult LoadConfiguration([FromBody] ConfigRequest request)
         {
+            if (request == null || string.IsNullOrWhiteSpace(request.XmlContent))
+            {
+                return BadRequest(new
+                {
+                    Estado = "Error",
+                    Mensaje = "El XML está vacío"
+                });
+            }
+
+            IngestionResult resultado = xmlIngestionService.CargarXml(request.XmlContent);
+
+            if (!resultado.Success)
+            {
+                return BadRequest(new
+                {
+                    Estado = "Rollback",
+                    Mensaje = resultado.Message,
+                    Procesados = resultado.ProcessedNodes,
+                    Transaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+                    LogsDot = xmlIngestionService.GenerarDotLogs()
+                });
+            }
+
             return Ok(new
             {
-                Estado = "Exitoso",
-                Mensaje = "Configuración recibida correctamente"
+                Estado = "Commit",
+                Mensaje = resultado.Message,
+                Procesados = resultado.ProcessedNodes,
+                Transaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+                TablaRed = xmlIngestionService.GenerarTablaRedSatelital(),
+                LogsDot = xmlIngestionService.GenerarDotLogs(),
+                ResultadoDot = xmlIngestionService.GenerarDotResultado(resultado)
             });
         }
 
