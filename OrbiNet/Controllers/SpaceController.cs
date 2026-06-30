@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using OrbiNet.Services;
 using OrbiNet.Models;
+using OrbiNet.Services;
 using OrbiNet.Services.Ingestion;
 
 namespace OrbiNet.Controllers
@@ -24,56 +24,55 @@ namespace OrbiNet.Controllers
         }
 
         [HttpPost("config")]
-        public IActionResult LoadConfiguration(
-            [FromBody] XmlConfigurationRequest request)
+        public IActionResult LoadConfiguration([FromBody] ConfigRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.XmlContent))
+            if (request == null || string.IsNullOrWhiteSpace(request.XmlContent))
             {
                 return BadRequest(new
                 {
                     Estado = "Error",
-                    Mensaje = "No se recibió contenido XML"
+                    Mensaje = "El XML está vacío"
                 });
             }
 
-            var resultado =
-                xmlIngestionService.CargarXml(request.XmlContent);
+            IngestionResult resultado = xmlIngestionService.CargarXml(request.XmlContent);
 
             if (!resultado.Success)
             {
                 return BadRequest(new
                 {
-                    Estado = "Error",
-                    resultado.Message,
-                    resultado.ProcessedNodes
+                    Estado = "Rollback",
+                    Mensaje = resultado.Message,
+                    Procesados = resultado.ProcessedNodes,
+                    Transaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+                    LogsDot = xmlIngestionService.GenerarDotLogs()
                 });
             }
 
             return Ok(new
             {
-                Estado = "Exitoso",
-                resultado.Message,
-                resultado.ProcessedNodes
+                Estado = "Commit",
+                Mensaje = resultado.Message,
+                Procesados = resultado.ProcessedNodes,
+                Transaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+                TablaRed = xmlIngestionService.GenerarTablaRedSatelital(),
+                LogsDot = xmlIngestionService.GenerarDotLogs(),
+                ResultadoDot = xmlIngestionService.GenerarDotResultado(resultado)
             });
         }
 
         [HttpGet("logs")]
         public IActionResult ObtenerLogs()
         {
-            return Ok(
-                xmlIngestionService.ObtenerLogs()
-            );
+            return Ok(xmlIngestionService.ObtenerLogs());
         }
 
         [HttpGet("graph/logs")]
         public IActionResult ObtenerGraphvizLogs()
         {
-            string dot =
-                xmlIngestionService.GenerarDotLogs();
-
             return Ok(new
             {
-                Dot = dot
+                Dot = xmlIngestionService.GenerarDotLogs()
             });
         }
 
@@ -82,8 +81,7 @@ namespace OrbiNet.Controllers
         {
             return Ok(new
             {
-                Estado =
-                    xmlIngestionService.ObtenerEstadoTransaccion()
+                Estado = xmlIngestionService.ObtenerEstadoTransaccion()
             });
         }
 
@@ -92,30 +90,28 @@ namespace OrbiNet.Controllers
         {
             return Ok(new
             {
-                Tabla =
-                    xmlIngestionService.GenerarTablaRedSatelital()
+                Tabla = xmlIngestionService.GenerarTablaRedSatelital()
             });
         }
-        
+
         [HttpGet("state")]
         public IActionResult GetState()
         {
             return Ok(new
             {
-        TickActual = simulationService.ObtenerTickActual(),
-        EstadoTransaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
-        CantidadNodos = routingService.ObtenerCantidadNodos()
-        });
+                TickActual = simulationService.ObtenerTickActual(),
+                EstadoTransaccion = xmlIngestionService.ObtenerEstadoTransaccion(),
+                CantidadNodos = routingService.ObtenerCantidadNodos()
+            });
         }
 
         [HttpGet("topology")]
         public IActionResult ObtenerTopologia()
         {
-        return Ok(new
-        {
-        Topologia =
-            xmlIngestionService.GenerarTablaRedSatelital()
-        });
+            return Ok(new
+            {
+                Topologia = xmlIngestionService.GenerarTablaRedSatelital()
+            });
         }
 
         [HttpGet("simulation/status")]

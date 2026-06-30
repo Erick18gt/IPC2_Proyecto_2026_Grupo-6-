@@ -1,8 +1,211 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "OrbiNet";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Bienvenido a OrbiNet-NetCore</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-4">
+    <h1 class="mb-3">OrbiNet - Panel de Control</h1>
+
+    <div class="alert alert-info">
+        Usa este panel para cargar XML, registrar nodos, enviar mensajes y controlar la simulación.
+    </div>
+
+    <div class="card mb-4">
+    <div class="card-header">
+        <strong>1. Cargar configuración XML</strong>
+    </div>
+    <div class="card-body">
+        <input id="xmlFile" type="file" class="form-control" accept=".xml" />
+        <button class="btn btn-primary mt-3" onclick="cargarXmlArchivo()">Cargar XML</button>
+    </div>
 </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>2. Registrar nodo</strong>
+        </div>
+        <div class="card-body">
+            <input id="idNodo" class="form-control" placeholder="Ejemplo: SAT-ECU-0010" />
+            <button class="btn btn-success mt-3" onclick="registrarNodo()">Registrar nodo</button>
+            <button class="btn btn-secondary mt-3" onclick="contarNodos()">Contar nodos</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>3. Enviar mensaje</strong>
+        </div>
+        <div class="card-body">
+            <input id="origen" class="form-control mb-2" placeholder="Nodo origen" />
+            <input id="destino" class="form-control mb-2" placeholder="Nodo destino" />
+            <textarea id="mensaje" class="form-control" rows="3" placeholder="Mensaje"></textarea>
+            <button class="btn btn-warning mt-3" onclick="enviarMensaje()">Enviar mensaje</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>4. Simulación</strong>
+        </div>
+        <div class="card-body">
+            <button class="btn btn-dark" onclick="estadoSimulacion()">Ver estado</button>
+            <button class="btn btn-primary" onclick="avanzarSimulacion()">Avanzar tick</button>
+            <button class="btn btn-danger" onclick="reiniciarSimulacion()">Reiniciar</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Resultado</strong>
+        </div>
+        <div class="card-body">
+            <pre id="resultado" style="white-space: pre-wrap; background:#111; color:#00ff88; padding:15px; border-radius:8px; min-height:200px;"></pre>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const authHeader = "Basic " + btoa("orbitnet_admin:USAC_ECYS_2026");
+
+    async function cargarXmlArchivo() {
+    const input = document.getElementById("xmlFile");
+
+    if (input.files.length === 0) {
+        mostrar({ Estado: "Error", Mensaje: "Debe seleccionar un archivo XML" });
+        return;
+    }
+
+    const archivo = input.files[0];
+    const xml = await archivo.text();
+
+    const response = await fetch("/api/space/config", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": authHeader
+        },
+        body: JSON.stringify({
+            xmlContent: xml
+        })
+    });
+
+    const data = await response.json();
+
+    if (data.tablaRed && data.tablaRed.length > 3000) {
+        data.tablaRed = data.tablaRed.substring(0, 3000) + "\n\n[Salida recortada porque la matriz es demasiado grande]";
+    }
+
+    mostrar(data);
+}
+
+    async function registrarNodo() {
+        const idNodo = document.getElementById("idNodo").value;
+
+        const response = await fetch("/api/space/node/register/" + encodeURIComponent(idNodo), {
+            method: "POST",
+            headers: {
+                "Authorization": authHeader
+            }
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    async function contarNodos() {
+        const response = await fetch("/api/space/node/count", {
+            method: "GET",
+            headers: {
+                "Authorization": authHeader
+            }
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    async function enviarMensaje() {
+        const origen = document.getElementById("origen").value;
+        const destino = document.getElementById("destino").value;
+        const mensaje = document.getElementById("mensaje").value;
+
+        const response = await fetch("/api/relay/send", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": authHeader
+            },
+            body: JSON.stringify({
+                origen: origen,
+                destino: destino,
+                mensaje: mensaje
+            })
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    async function estadoSimulacion() {
+        const response = await fetch("/api/space/simulation/status", {
+            method: "GET",
+            headers: {
+                "Authorization": authHeader
+            }
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    async function avanzarSimulacion() {
+        const response = await fetch("/api/space/simulation/step", {
+            method: "POST",
+            headers: {
+                "Authorization": authHeader
+            }
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    async function reiniciarSimulacion() {
+        const response = await fetch("/api/space/simulation/reset", {
+            method: "POST",
+            headers: {
+                "Authorization": authHeader
+            }
+        });
+
+        const data = await response.json();
+        mostrar(data);
+    }
+
+    function mostrar(data) {
+
+    let salida = "";
+
+    salida += "Estado: " + (data.estado ?? data.Estado) + "\n";
+    salida += "Mensaje: " + (data.mensaje ?? data.Mensaje) + "\n";
+    salida += "Procesados: " + (data.procesados ?? data.Procesados) + "\n";
+    salida += "Transacción: " + (data.transaccion ?? data.Transaccion) + "\n\n";
+
+    if (data.tablaRed || data.TablaRed) {
+
+        salida += "========= MATRIZ ORTOGONAL =========\n\n";
+        salida += (data.tablaRed ?? data.TablaRed);
+        salida += "\n\n";
+    }
+
+    if (data.logsDot || data.LogsDot) {
+
+        salida += "========= LOGS =========\n\n";
+        salida += (data.logsDot ?? data.LogsDot);
+        salida += "\n\n";
+    }
+
+    document.getElementById("resultado").textContent = salida;
+}
+</script>
+}
